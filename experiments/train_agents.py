@@ -163,10 +163,10 @@ def main():
         debug_actions=DEBUG_ACTIONS
     )
 
-    print(f"\n🎉 Enhanced training completed!")
-    print("📈 Check the detailed action analysis above")
-    print("💾 Models saved in results/models/")
-    print("📊 TensorBoard logs in results/logs/")
+    print(f"\n Enhanced training completed!")
+    print(" Check the detailed action analysis above")
+    print(" Models saved in results/models/")
+    print("TensorBoard logs in results/logs/")
 
 
 if __name__ == "__main__":
