@@ -250,6 +250,7 @@ Academic use for MSc dissertation project.
 
 ---
 
-**Last Updated**: January 2025
-**Author**: MSc Student - Autonomous Vehicle Systems Research
-**Institution**: [Your University]
+**Last Updated**: August 2025
+**Author**: Praveen Kathirvel - MSc Robotics
+**Institution**: [University of Birmingham]
+
