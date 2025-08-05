@@ -2,7 +2,7 @@ import os
 import json
 import numpy as np
 from datetime import datetime
-from stable_baselines3 import DQN, PPO, A2C, SAC
+from stable_baselines3 import DQN, PPO, A2C, SAC, TD3, DDPG
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.callbacks import EvalCallback
 import gymnasium as gym
@@ -18,6 +18,9 @@ class ExperimentRunner:
             'DQN': DQN,
             'PPO': PPO,
             'A2C': A2C,
+            'SAC': SAC,
+            'TD3': TD3,
+            'DDPG': DDPG,
         }
         self.results = {}
 
