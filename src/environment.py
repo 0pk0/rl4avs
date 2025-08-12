@@ -22,9 +22,12 @@ class CustomRoundaboutEnv(RoundaboutEnv):
         # Course completion tracking
         self.initial_position = None
         self.has_entered_roundabout = False
+        self.has_exited_roundabout = False
         self.roundabout_progress = 0
         self.completion_threshold = 150.0  # Distance needed to complete course
+        self.exit_confirmation_threshold = 200.0  # Distance to confirm full exit
         self.max_distance_from_start = 0
+        self.roundabout_center_distance = 0  # Track distance from roundabout center
 
     @classmethod
     def default_config(cls):
@@ -77,7 +80,7 @@ class CustomRoundaboutEnv(RoundaboutEnv):
                 self.initial_position = current_position
                 print(f"🏁 Starting position: ({current_position[0]:.1f}, {current_position[1]:.1f})")
             
-            # 🎯 CUSTOM COMPLETION DETECTION
+            # 🎯 ENHANCED ROUNDABOUT EXIT DETECTION
             distance_from_start = abs(current_position[0] - self.initial_position[0]) + \
                                 abs(current_position[1] - self.initial_position[1])
             
@@ -85,27 +88,64 @@ class CustomRoundaboutEnv(RoundaboutEnv):
             if distance_from_start > self.max_distance_from_start:
                 self.max_distance_from_start = distance_from_start
             
-            # Detect roundabout entry (vehicle moves significant distance)
+            # Estimate roundabout center distance (assuming roundabout is around initial position)
+            # This helps detect when vehicle is moving away from roundabout
+            roundabout_center = self.initial_position  # Approximate center
+            center_distance = abs(current_position[0] - roundabout_center[0]) + \
+                            abs(current_position[1] - roundabout_center[1])
+            self.roundabout_center_distance = center_distance
+            
+            # 🔄 ROUNDABOUT ENTRY DETECTION
             if not self.has_entered_roundabout and distance_from_start > 50.0:
                 self.has_entered_roundabout = True
-                print(f"🔄 Entered roundabout at step {self.step_count}")
+                print(f"🔄 ENTERED ROUNDABOUT at step {self.step_count}")
+                print(f"   Entry position: ({current_position[0]:.1f}, {current_position[1]:.1f})")
+                print(f"   Entry speed: {current_speed:.1f}")
             
-            # 🏆 COMPLETION DETECTION: Vehicle has traveled far and is moving away from roundabout center
-            # This heuristic detects when vehicle has completed the roundabout circuit
+            # 🚪 ROUNDABOUT EXIT DETECTION 
+            # More sophisticated detection: vehicle has traveled far AND is moving away from roundabout
             if (self.has_entered_roundabout and 
+                not self.has_exited_roundabout and
                 distance_from_start > self.completion_threshold and
-                self.step_count > 50):  # Minimum steps to ensure legitimate completion
+                center_distance > self.completion_threshold * 0.8 and  # Moving away from center
+                self.step_count > 30):  # Minimum steps for legitimate exit
                 
-                # Additional check: vehicle should be moving (not crashed/stuck)
+                # Confirm vehicle is actively moving (not crashed/stuck)
                 if current_speed > 5.0:
-                    print(f"🎉 COURSE COMPLETION DETECTED!")
-                    print(f"   Distance traveled: {distance_from_start:.1f}")
-                    print(f"   Steps taken: {self.step_count}")
-                    print(f"   Final position: ({current_position[0]:.1f}, {current_position[1]:.1f})")
-                    
-                    # Set arrival flag manually since highway-env doesn't do it
-                    info['arrived'] = True
-                    done = True  # Force episode termination
+                    self.has_exited_roundabout = True
+                    print(f"🚪 ROUNDABOUT EXIT DETECTED at step {self.step_count}")
+                    print(f"   Exit position: ({current_position[0]:.1f}, {current_position[1]:.1f})")
+                    print(f"   Exit speed: {current_speed:.1f}")
+                    print(f"   Distance from start: {distance_from_start:.1f}")
+                    print(f"   Distance from roundabout center: {center_distance:.1f}")
+            
+            # 🏆 FINAL COMPLETION DETECTION: Vehicle has fully exited and traveled sufficient distance
+            if (self.has_exited_roundabout and 
+                distance_from_start > self.exit_confirmation_threshold and
+                current_speed > 3.0):  # Still moving after exit
+                
+                print(f"")
+                print(f"🎉 =============================================")
+                print(f"🎉    ROUNDABOUT COURSE COMPLETED!          ")
+                print(f"🎉 =============================================")
+                print(f"📊 COMPLETION SUMMARY:")
+                print(f"   ✅ Total distance traveled: {distance_from_start:.1f} units")
+                print(f"   ⏱️  Total steps taken: {self.step_count}")
+                print(f"   🏁 Final position: ({current_position[0]:.1f}, {current_position[1]:.1f})")
+                print(f"   🚗 Final speed: {current_speed:.1f} km/h")
+                print(f"   🔄 Roundabout entry: Step {3}")
+                print(f"   🚪 Roundabout exit: Step ~{self.step_count-20}")
+                print(f"   🏆 Course completion: Step {self.step_count}")
+                print(f"🎉 =============================================")
+                print(f"")
+                
+                # Set arrival flag and force immediate termination
+                info['arrived'] = True
+                done = True  # Force episode termination immediately
+                
+                # Log this like a collision for debugging
+                print(f"💫 EPISODE TERMINATED: Course completion detected")
+                print(f"   Termination reason: Successful roundabout navigation")
             
             # 🚨 AGGRESSIVE IDLE/STATIONARY PENALTIES
             if current_speed < 0.5:  # Very low speed threshold
@@ -182,7 +222,23 @@ class CustomRoundaboutEnv(RoundaboutEnv):
                             reward += repeated_penalty
                             break
                 
-                print(f"💥 COLLISION! Penalty: {collision_penalty}, Total reward: {reward:.2f}")
+                print(f"")
+                print(f"💥 =============================================")
+                print(f"💥    COLLISION DETECTED!                   ")
+                print(f"💥 =============================================")
+                print(f"📊 COLLISION SUMMARY:")
+                print(f"   💥 Collision position: ({current_position[0]:.1f}, {current_position[1]:.1f})")
+                print(f"   ⏱️  Steps before collision: {self.step_count}")
+                print(f"   🚗 Speed at impact: {current_speed:.1f} km/h")
+                print(f"   🔄 Had entered roundabout: {self.has_entered_roundabout}")
+                print(f"   🚪 Had exited roundabout: {self.has_exited_roundabout}")
+                print(f"   📏 Distance from start: {abs(current_position[0] - self.initial_position[0]) + abs(current_position[1] - self.initial_position[1]):.1f}")
+                print(f"   🎯 Penalty applied: {collision_penalty:.1f}")
+                print(f"   📊 Episode reward: {reward:.2f}")
+                print(f"💥 =============================================")
+                print(f"")
+                print(f"💫 EPISODE TERMINATED: Collision detected")
+                print(f"   Termination reason: Vehicle collision")
             
             # 🚗 SPEED REWARDS - Encourage appropriate speed
             if 8.0 <= current_speed <= 15.0:  # Optimal speed range for roundabouts
@@ -221,8 +277,10 @@ class CustomRoundaboutEnv(RoundaboutEnv):
             # Reset completion tracking
             self.initial_position = None
             self.has_entered_roundabout = False
+            self.has_exited_roundabout = False
             self.roundabout_progress = 0
             self.max_distance_from_start = 0
+            self.roundabout_center_distance = 0
         return obs, info
 
 def register_custom_env():

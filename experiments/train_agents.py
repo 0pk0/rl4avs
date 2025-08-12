@@ -226,7 +226,8 @@ class DebugExperimentRunner(ExperimentRunner):
 
     def train_algorithm_with_debug(self, algo_name, total_timesteps=100000,
                                    n_seeds=1, show_training=True, debug_actions=True,
-                                   stopping_mode="safety", extended_training=False):
+                                   stopping_mode="safety", extended_training=False,
+                                   policy_kwargs=None):
         print(f"🎯 Training {algo_name} with comprehensive debugging")
         print(f"📊 Total timesteps: {total_timesteps:,}")
         print(f"🔍 Action debugging: {'Enabled' if debug_actions else 'Disabled'}")
@@ -279,14 +280,29 @@ class DebugExperimentRunner(ExperimentRunner):
             # Set up logging
             log_dir = f"results/logs/{algo_name}_debug_seed_{seed}/"
 
-            # Initialize model
-            model = self.algorithms[algo_name](
-                'MlpPolicy',
-                train_env,
-                verbose=0,  # Disable verbose to keep terminal clean
-                seed=seed,
-                tensorboard_log=log_dir
-            )
+            # Initialize model with tuned hyperparameters
+            if algo_name == 'PPO' and policy_kwargs is not None:
+                # Use advanced PPO hyperparameters
+                model = self.algorithms[algo_name](
+                    'MlpPolicy',
+                    train_env,
+                    verbose=0,
+                    seed=seed,
+                    tensorboard_log=log_dir,
+                    **policy_kwargs  # Unpack all hyperparameters
+                )
+                print("🎛️ Using ADVANCED PPO hyperparameters for collision avoidance")
+            else:
+                # Use default hyperparameters
+                model = self.algorithms[algo_name](
+                    'MlpPolicy',
+                    train_env,
+                    verbose=0,
+                    seed=seed,
+                    tensorboard_log=log_dir,
+                    policy_kwargs=policy_kwargs
+                )
+                print("⚙️ Using default hyperparameters")
 
             # Create enhanced debugging callback
             debug_callback = VisualizationCallbackWithDebug(
@@ -437,11 +453,32 @@ def main():
     # ===============================
     
     # Basic Configuration
-    TOTAL_TIMESTEPS = 50000  # Increased for robust training
+    TOTAL_TIMESTEPS = 250000  # 5x more training for robustness
     N_SEEDS = 1
     ALGORITHM = 'PPO'  # PPO typically works best for continuous control
     SHOW_TRAINING = True
     DEBUG_ACTIONS = True
+    
+    # 🧠 HYPERPARAMETER TUNING: Deeper network for more complex decisions
+    # Default is [64, 64]. We use a deeper network to learn more complex patterns.
+    PPO_POLICY_KWARGS = dict(net_arch=[256, 256])
+    
+    # 🎛️ ADVANCED PPO HYPERPARAMETERS FOR COLLISION AVOIDANCE
+    # These are specifically tuned for autonomous driving scenarios
+    PPO_ADVANCED_KWARGS = dict(
+        learning_rate=3e-4,              # Standard learning rate
+        n_steps=2048,                    # Steps per update (increase for more stable gradients)
+        batch_size=64,                   # Mini-batch size (smaller for more frequent updates)
+        n_epochs=10,                     # Epochs per update (more training per batch)
+        gamma=0.99,                      # Discount factor (prioritize future rewards)
+        gae_lambda=0.95,                 # GAE parameter (bias-variance tradeoff)
+        clip_range=0.2,                  # PPO clip parameter (prevent large policy changes)
+        ent_coef=0.01,                   # Entropy coefficient (encourage exploration)
+        vf_coef=0.5,                     # Value function coefficient
+        max_grad_norm=0.5,               # Gradient clipping (prevent exploding gradients)
+        target_kl=0.01,                  # Early stopping for KL divergence
+        policy_kwargs=PPO_POLICY_KWARGS
+    )
     
     # 🎯 STOPPING MODE OPTIONS:
     # "safety"     - Stop when 95% success rate + <5% collision rate (RECOMMENDED)
@@ -490,7 +527,8 @@ def main():
         show_training=SHOW_TRAINING,
         debug_actions=DEBUG_ACTIONS,
         stopping_mode=STOPPING_MODE,
-        extended_training=EXTENDED_TRAINING
+        extended_training=EXTENDED_TRAINING,
+        policy_kwargs=PPO_ADVANCED_KWARGS if ALGORITHM == 'PPO' else None
     )
 
     print(f"\n🎉 Robust training completed!")
