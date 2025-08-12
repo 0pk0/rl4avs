@@ -104,35 +104,38 @@ cd experiments
 python action_monitor.py
 ```
 
-## 🔧 Configuration
+### Q-Learning Training
 
-### Environment Configuration
+The `train_q_learning.py` script introduces a Q-Learning training framework for autonomous vehicle navigation, comparable to the existing PPO setup.
 
-The project uses a custom roundabout environment with enhanced reward shaping:
-
-- **Collision penalty**: -10.0
-- **Success reward**: +3.0  
-- **Idle penalty**: -0.05 (discourages stopping)
-- **Lane change reward**: +0.1 (encourages proactive behavior)
-- **High speed reward**: +0.4 (within safe limits)
+- **Environment and Action Space**: Utilizes the same custom environment (`roundabout-v0`) and action space as PPO, ensuring consistency in training conditions.
+- **Evaluation and Metrics**: The evaluation framework is aligned with PPO, using the same episode limits, evaluation frequency, and custom reward functions. Generates comparable performance metrics for analysis.
+- **Training Configuration**: Configurable parameters include total episodes, evaluation frequency, maximum steps per episode, and stopping mode. Enhanced reward features and Q-Learning hyperparameters are specified for effective training.
+- **Q-Table and State Discretization**: Provides insights into the expected Q-table size and state discretization, crucial for understanding the agent's learning process.
 
 ### Training Parameters
 
-**Default settings in `train_agents.py`:**
-- Total timesteps: 10,000 (adjustable)
-- Seeds: 1 (increase for statistical significance)
-- Algorithm: PPO (proven effective for continuous control)
-- Evaluation frequency: 1,000 steps
-- Early stopping: Enabled at reward threshold 2.0
+**Default settings in `train_q_learning.py`:**
+- Total episodes: 5,000 (equivalent to ~250K steps)
+- Evaluation frequency: every 500 episodes
+- Max steps per episode: 300
+- Stopping mode: "safety" (same as PPO)
+- Enhanced reward features: Strong idle penalty, high completion reward, efficiency bonus, etc.
+- Q-Learning hyperparameters: Learning rate 0.1, discount factor 0.99, epsilon decay 0.995
 
-## 📊 Algorithms Implemented
+### Debugging Tools
 
-### Current Algorithms
+- **Environment Diagnostics**: `debug_environment.py` for system health checks
+- **Quick Training Validation**: `quick_train_test.py` for rapid testing
+- **Model Testing & Comparison**: `test_model_loading.py` for performance evaluation
+
+### Algorithms Implemented
 
 1. **PPO (Proximal Policy Optimization)**
    - Policy gradient method with clipped surrogate objective
    - Good for continuous action spaces
    - Stable and sample efficient
+   - Enhanced with advanced hyperparameters and safety-based stopping criteria
 
 2. **DQN (Deep Q-Network)**  
    - Value-based method with experience replay
@@ -143,6 +146,11 @@ The project uses a custom roundabout environment with enhanced reward shaping:
    - Policy gradient with value function baseline
    - On-policy learning with advantage estimation
    - Good baseline algorithm
+
+4. **Q-Learning**
+   - Value-based method with Q-table updates
+   - Suitable for discrete action spaces
+   - Comparable framework to PPO for direct analysis
 
 ### Planned Extensions
 
@@ -186,6 +194,7 @@ Results include:
 - **Reward trend analysis**: Identify learning issues
 - **Visual evaluation**: See agent performance live
 - **Comprehensive logging**: Detailed training statistics
+- **Collision Insights**: Detailed analysis and solutions for collision issues
 
 ### Common Issues and Solutions
 
