@@ -271,7 +271,7 @@ class QLearningExperimentRunner:
         
         # Final evaluation
         print(f"\n🏁 Final Evaluation")
-        final_metrics = self.evaluate_q_agent(agent, eval_env, n_eval_episodes=50, render=False)
+        final_metrics = self.evaluate_q_agent(agent, eval_env, n_episodes=50, render=False)
         
         print(f"✅ Training completed in {training_time:.1f} seconds")
         print(f"📊 Final Performance:")
