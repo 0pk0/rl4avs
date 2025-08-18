@@ -194,7 +194,7 @@ def main():
     
     if not models:
         print("❌ No saved models found!")
-        print("   Train some models first using train_agents.py")
+        print("   Train some models first using train_ppo.py")
         return
     
     print(f"\n📋 Testing {len(models)} found models...")

@@ -48,7 +48,7 @@ This project implements and compares different reinforcement learning algorithms
 
 ## Setup
 1. Install requirements: `pip install -r requirements.txt`
-2. Run training: `python experiments/train_agents.py`
+2. Run training: `python experiments/train_ppo.py`
 3. Run comparison: `python experiments/compare_algorithms.py`
 
 ## Structure

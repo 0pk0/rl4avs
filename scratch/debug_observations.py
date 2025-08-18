@@ -297,7 +297,7 @@ def main():
         print(f"✅ Found trained model: {model_path}")
     else:
         print("⚠️ No trained model found - will use random actions")
-        print("   Train a model first: python experiments/train_agents.py")
+        print("   Train a model first: python experiments/train_ppo.py")
     
     # Initialize debugger
     debugger = ObservationDebugger(model_path=model_path, use_custom_env=True)

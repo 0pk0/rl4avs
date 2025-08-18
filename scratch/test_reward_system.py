@@ -129,7 +129,7 @@ def main():
         print("• Encourage efficient, fast completion")
         
         print(f"\n💡 NEXT STEPS:")
-        print("1. Run: python experiments/train_agents.py")
+        print("1. Run: python experiments/train_ppo.py")
         print("2. Watch how the agent learns to complete the course!")
         print("3. Test: python experiments/watch_agents.py")
         

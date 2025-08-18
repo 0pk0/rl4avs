@@ -1,72 +1,54 @@
 #!/usr/bin/env python3
 """
-🛡️ ROBUST RL TRAINING FOR AUTONOMOUS VEHICLES 🛡️
+⚡ A2C TRAINING FOR AUTONOMOUS VEHICLES ⚡
 
-This enhanced training script provides multiple stopping criteria focused on
-safety and route completion rather than just reward maximization.
+This script trains an Advantage Actor-Critic (A2C) agent, a policy-based deep
+RL method, using the same safety-focused training methodologies and evaluation
+metrics as the PPO and DQN agents. This allows for direct comparison across
+different deep RL algorithms.
 
-🎯 STOPPING MODES AVAILABLE:
+🎯 KEY FEATURES:
 
-1. "safety" (RECOMMENDED) 
-   - Stops when: 95% success rate AND <5% collision rate
-   - Best for: Reliable, everyday driving scenarios
-   - Use case: When you need consistent route completion
-
-2. "progressive"
-   - Starts lenient (70% success), becomes stricter (95% success)
-   - Best for: Understanding learning progression
-   - Use case: Research on learning curves and adaptation
-
-3. "ultra_safe" 
-   - Stops when: 98% success rate AND <2% collision rate
-   - Best for: Critical safety applications
-   - Use case: When failure is not an option
-
-4. "reward" 
-   - Original reward threshold stopping (reward >= 2.5)
-   - Best for: Comparison with traditional methods
-   - Use case: Academic comparisons, less reliable for safety
-
-5. "extended"
-   - No early stopping, trains for full timesteps
-   - Best for: Maximum performance extraction
-   - Use case: When you want to see absolute limits
+1.  **Safety-based Stopping**: Utilizes custom callbacks that stop training based on
+    achieving high success rates and low collision rates, rather than just reward.
+2.  **Custom Reward Environment**: Leverages the enhanced 'custom-roundabout-v0'
+    environment with safety-aligned reward functions.
+3.  **Discrete Action Space**: Designed for the environment's discrete action space
+    (LANE_LEFT, IDLE, LANE_RIGHT, FASTER, SLOWER).
+4.  **Logging & Monitoring**: Integrates with TensorBoard for detailed logging and
+    provides real-time progress updates.
+5.  **Comparative Framework**: Ensures consistent environment and evaluation setup
+    with PPO, DQN, and Q-Learning for fair comparison.
 
 🚀 QUICK START:
-   1. Change STOPPING_MODE in main() to your preferred mode
-   2. Adjust TOTAL_TIMESTEPS (50K recommended for robust models)
-   3. Set EXTENDED_TRAINING = True to disable early stopping
-   4. Run: python experiments/train_agents.py
+   1. Change `STOPPING_MODE` in `main()` to your preferred mode (e.g., "safety", "extended").
+   2. Adjust `TOTAL_TIMESTEPS` (recommended 100K-500K for A2C).
+   3. Run: `python experiments/train_a2c.py`
 
 📊 MONITORING:
    - Real-time success/collision rates during training
    - Automatic model saving when criteria are met
    - Detailed action analysis and debugging
-
-🎓 FOR MSC RESEARCH:
-   - Use "safety" for main results
-   - Use "progressive" to show learning curves  
-   - Use "ultra_safe" for safety-critical analysis
-   - Use "extended" for ablation studies
 """
 
 import sys
 import os
+import numpy as np
+import gymnasium as gym
+import time
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.agents import ExperimentRunner
 from src.visualization_callback import VisualizationCallbackWithDebug
-from src.environment import make_env
-from src.utils import print_experiment_summary
-from stable_baselines3.common.callbacks import CallbackList, BaseCallback
-from stable_baselines3.common.callbacks import EvalCallback, StopTrainingOnRewardThreshold, CallbackList
-from stable_baselines3.common.evaluation import evaluate_policy
-import gymnasium as gym
-from tqdm import tqdm
-import time
+from src.environment import make_env, register_custom_env
+from stable_baselines3.common.callbacks import CallbackList, BaseCallback, EvalCallback, StopTrainingOnRewardThreshold
 
 
+# Reusing the SafetyBasedStoppingCallback and ProgressiveRobustnessCallback
+# from train_ppo.py (and now train_dqn.py) for consistency.
+# For simplicity, I'll include them here, but in a real project,
+# they might be in a shared utility or src/callbacks.
 class SafetyBasedStoppingCallback(BaseCallback):
     """
     Custom callback that stops training based on safety and success metrics
@@ -212,23 +194,20 @@ class ProgressiveRobustnessCallback(BaseCallback):
                 return False
         
         return True
-import numpy as np
 
 
-class DebugExperimentRunner(ExperimentRunner):
-    """Enhanced experiment runner with progress bars and action debugging"""
-    
+class A2CTrainer(ExperimentRunner):
+    """Custom runner for A2C with debugging and robust stopping criteria"""
     def __init__(self, env_name="roundabout-v0", use_custom_env=False):
         super().__init__(env_name, use_custom_env)
         # Ensure debug-specific directories exist
         os.makedirs("experiments/results/models", exist_ok=True)
         os.makedirs("experiments/results/logs", exist_ok=True)
 
-    def train_algorithm_with_debug(self, algo_name, total_timesteps=100000,
-                                   n_seeds=1, show_training=True, debug_actions=True,
-                                   stopping_mode="safety", extended_training=False,
-                                   policy_kwargs=None):
-        print(f"🎯 Training {algo_name} with comprehensive debugging")
+    def train_a2c_agent(self, total_timesteps=100000, n_seeds=1, show_training=True, debug_actions=True,
+                         stopping_mode="safety", extended_training=False, policy_kwargs=None):
+        
+        print(f"🎯 Training A2C with comprehensive debugging")
         print(f"📊 Total timesteps: {total_timesteps:,}")
         print(f"🔍 Action debugging: {'Enabled' if debug_actions else 'Disabled'}")
         print(f"🎬 Visual training: {'Enabled' if show_training else 'Disabled'}")
@@ -239,6 +218,7 @@ class DebugExperimentRunner(ExperimentRunner):
         seed_results = []
 
         # Overall progress for all seeds
+        from tqdm import tqdm
         overall_pbar = tqdm(
             total=n_seeds,
             desc="Training Seeds",
@@ -252,7 +232,6 @@ class DebugExperimentRunner(ExperimentRunner):
             # Create training environment (FIXED: maintain custom env even with rendering)
             if show_training and self.use_custom_env:
                 # Create custom environment with rendering
-                from src.environment import register_custom_env
                 register_custom_env()
                 train_env = gym.make('custom-roundabout-v0', render_mode="human")
                 print("🎁 Using CUSTOM environment with rendering for training")
@@ -268,7 +247,6 @@ class DebugExperimentRunner(ExperimentRunner):
 
             # Create evaluation environment (FIXED: use same environment type as training)
             if self.use_custom_env:
-                from src.environment import register_custom_env
                 register_custom_env()
                 eval_env = gym.make('custom-roundabout-v0', render_mode="human")
                 print("🎁 Using CUSTOM environment for evaluation")
@@ -278,31 +256,18 @@ class DebugExperimentRunner(ExperimentRunner):
             eval_env.reset(seed=seed + 1000)
 
             # Set up logging
-            log_dir = f"results/logs/{algo_name}_debug_seed_{seed}/"
+            log_dir = f"experiments/results/logs/A2C_debug_seed_{seed}/"
 
-            # Initialize model with tuned hyperparameters
-            if algo_name == 'PPO' and policy_kwargs is not None:
-                # Use advanced PPO hyperparameters
-                model = self.algorithms[algo_name](
-                    'MlpPolicy',
-                    train_env,
-                    verbose=0,
-                    seed=seed,
-                    tensorboard_log=log_dir,
-                    **policy_kwargs  # Unpack all hyperparameters
-                )
-                print("🎛️ Using ADVANCED PPO hyperparameters for collision avoidance")
-            else:
-                # Use default hyperparameters
-                model = self.algorithms[algo_name](
-                    'MlpPolicy',
-                    train_env,
-                    verbose=0,
-                    seed=seed,
-                    tensorboard_log=log_dir,
-                    policy_kwargs=policy_kwargs
-                )
-                print("⚙️ Using default hyperparameters")
+            # Initialize model with default hyperparameters
+            model = self.algorithms['A2C'](
+                'MlpPolicy',
+                train_env,
+                verbose=0,
+                seed=seed,
+                tensorboard_log=log_dir,
+                policy_kwargs=policy_kwargs # Will be None for default
+            )
+            print("⚙️ Using default A2C hyperparameters")
 
             # Create enhanced debugging callback
             debug_callback = VisualizationCallbackWithDebug(
@@ -320,12 +285,11 @@ class DebugExperimentRunner(ExperimentRunner):
 
             # Create evaluation environment for callbacks (FIXED: use same environment type)
             if self.use_custom_env:
-                from src.environment import register_custom_env
                 register_custom_env()
-                eval_env = gym.make('custom-roundabout-v0')
+                eval_env_callbacks = gym.make('custom-roundabout-v0')
                 print("🎁 Using CUSTOM environment for safety evaluation")
             else:
-                eval_env = gym.make(self.env_name)
+                eval_env_callbacks = gym.make(self.env_name)
                 print("⚠️ Using STANDARD environment for safety evaluation")
 
             # Configure stopping criteria based on mode
@@ -335,7 +299,7 @@ class DebugExperimentRunner(ExperimentRunner):
                 if stopping_mode == "safety":
                     # Safety-focused stopping: High success rate, low collision rate
                     safety_callback = SafetyBasedStoppingCallback(
-                        eval_env=eval_env,
+                        eval_env=eval_env_callbacks, # Use the separate eval_env
                         check_freq=3000,
                         n_eval_episodes=20,
                         min_success_rate=0.95,  # 95% success rate
@@ -349,7 +313,7 @@ class DebugExperimentRunner(ExperimentRunner):
                 elif stopping_mode == "progressive":
                     # Progressive criteria that get stricter over time
                     progressive_callback = ProgressiveRobustnessCallback(
-                        eval_env=eval_env,
+                        eval_env=eval_env_callbacks, # Use the separate eval_env
                         check_freq=2500,
                         n_eval_episodes=15,
                         verbose=1
@@ -360,7 +324,7 @@ class DebugExperimentRunner(ExperimentRunner):
                 elif stopping_mode == "ultra_safe":
                     # Ultra-conservative: Near perfect performance required
                     ultra_safe_callback = SafetyBasedStoppingCallback(
-                        eval_env=eval_env,
+                        eval_env=eval_env_callbacks, # Use the separate eval_env
                         check_freq=2000,
                         n_eval_episodes=25,
                         min_success_rate=0.98,  # 98% success rate
@@ -378,7 +342,7 @@ class DebugExperimentRunner(ExperimentRunner):
                         verbose=1
                     )
                     eval_callback = EvalCallback(
-                        eval_env,
+                        eval_env_callbacks, # Use the separate eval_env
                         eval_freq=1000,
                         callback_on_new_best=stop_callback,
                         verbose=1
@@ -392,7 +356,7 @@ class DebugExperimentRunner(ExperimentRunner):
             combined_callbacks = CallbackList(callbacks)
 
             # Train the model
-            actual_timesteps = total_timesteps if extended_training else min(total_timesteps, 50000)
+            actual_timesteps = total_timesteps if extended_training else min(total_timesteps, 50000) # Keep consistent with PPO
             print(f"🚀 Training for {actual_timesteps:,} timesteps...")
             
             model.learn(
@@ -405,25 +369,26 @@ class DebugExperimentRunner(ExperimentRunner):
             print(f"✅ Seed {seed} completed in {training_time:.1f} seconds")
 
             # Save model with proper path handling
-            model_save_path = f"experiments/results/models/{algo_name}_debug_seed_{seed}"
+            model_save_path = f"experiments/results/models/A2C_debug_seed_{seed}"
             try:
                 model.save(model_save_path)
                 print(f"✅ Model saved to {model_save_path}")
             except Exception as e:
                 print(f"❌ Error saving model: {e}")
-                # Try alternative path
-                os.makedirs("results/models", exist_ok=True)
-                fallback_path = f"results/models/{algo_name}_debug_seed_{seed}"
+                # Try alternative path - this part might need adjustment based on project structure if 'results' is at root
+                os.makedirs("results/models", exist_ok=True) # Ensure root results/models exists
+                fallback_path = f"results/models/A2C_debug_seed_{seed}"
                 model.save(fallback_path)
                 print(f"✅ Model saved to fallback path: {fallback_path}")
 
             # Clean up environments
             train_env.close()
             eval_env.close()
+            eval_env_callbacks.close() # Close the separate eval env for callbacks too
 
             result = {
                 'seed': seed,
-                'algorithm': algo_name,
+                'algorithm': 'A2C',
                 'total_timesteps': total_timesteps,
                 'training_time': training_time,
                 'debug_enabled': debug_actions
@@ -433,12 +398,12 @@ class DebugExperimentRunner(ExperimentRunner):
             overall_pbar.update(1)
 
         overall_pbar.close()
-        self.results[algo_name] = seed_results
+        self.results['A2C'] = seed_results
         return seed_results
 
 
 def main():
-    print("🎮 Enhanced RL Training with Action Debugging")
+    print("🎮 Enhanced A2C Training with Action Debugging")
     print("=" * 60)
     print("Features enabled:")
     print("  ✅ Real-time progress bars")
@@ -453,32 +418,15 @@ def main():
     # ===============================
     
     # Basic Configuration
-    TOTAL_TIMESTEPS = 250000  # 5x more training for robustness
+    TOTAL_TIMESTEPS = 250000  # Recommended for robustness with A2C
     N_SEEDS = 1
-    ALGORITHM = 'PPO'  # PPO typically works best for continuous control
+    ALGORITHM = 'A2C'
     SHOW_TRAINING = True
     DEBUG_ACTIONS = True
     
-    # 🧠 HYPERPARAMETER TUNING: Deeper network for more complex decisions
-    # Default is [64, 64]. We use a deeper network to learn more complex patterns.
-    PPO_POLICY_KWARGS = dict(net_arch=[256, 256])
-    
-    # 🎛️ ADVANCED PPO HYPERPARAMETERS FOR COLLISION AVOIDANCE
-    # These are specifically tuned for autonomous driving scenarios
-    PPO_ADVANCED_KWARGS = dict(
-        learning_rate=3e-4,              # Standard learning rate
-        n_steps=2048,                    # Steps per update (increase for more stable gradients)
-        batch_size=64,                   # Mini-batch size (smaller for more frequent updates)
-        n_epochs=10,                     # Epochs per update (more training per batch)
-        gamma=0.99,                      # Discount factor (prioritize future rewards)
-        gae_lambda=0.95,                 # GAE parameter (bias-variance tradeoff)
-        clip_range=0.2,                  # PPO clip parameter (prevent large policy changes)
-        ent_coef=0.01,                   # Entropy coefficient (encourage exploration)
-        vf_coef=0.5,                     # Value function coefficient
-        max_grad_norm=0.5,               # Gradient clipping (prevent exploding gradients)
-        target_kl=0.01,                  # Early stopping for KL divergence
-        policy_kwargs=PPO_POLICY_KWARGS
-    )
+    # Hyperparameters for A2C (using Stable-Baselines3 defaults)
+    # No specific policy_kwargs needed for default A2C
+    A2C_POLICY_KWARGS = None
     
     # 🎯 STOPPING MODE OPTIONS:
     # "safety"     - Stop when 95% success rate + <5% collision rate (RECOMMENDED)
@@ -503,7 +451,7 @@ def main():
     print(f"🎁 Enhanced rewards: {'ENABLED' if USE_CUSTOM_REWARDS else 'DISABLED'}")
     
     if USE_CUSTOM_REWARDS:
-        print("\n🚀 ENHANCED REWARD FEATURES:")
+        print("\n🚀 ENHANCED REWARD FEATURES (same as PPO/Q-Learning):")
         print("   • 10x stronger idle penalty (-0.5 per step)")
         print("   • Massive stationary penalty (-2.0+ exponential)")
         print("   • 3x higher completion reward (+10.0)")
@@ -511,43 +459,41 @@ def main():
         print("   • Efficiency bonus for fast completion")
         print("   • Repeated mistake prevention")
 
-    # Initialize enhanced experiment runner with custom rewards
-    runner = DebugExperimentRunner(
+    # Initialize custom A2C trainer
+    runner = A2CTrainer(
         env_name="roundabout-v0",
         use_custom_env=USE_CUSTOM_REWARDS  # Use enhanced reward system
     )
 
-    input("🎬 Press Enter to start enhanced training (ensure you can see pygame windows)...")
+    input("🎬 Press Enter to start A2C training (ensure you can see pygame windows)...")
 
     # Train with robust stopping criteria
-    results = runner.train_algorithm_with_debug(
-        algo_name=ALGORITHM,
+    results = runner.train_a2c_agent(
         total_timesteps=TOTAL_TIMESTEPS,
         n_seeds=N_SEEDS,
         show_training=SHOW_TRAINING,
         debug_actions=DEBUG_ACTIONS,
         stopping_mode=STOPPING_MODE,
         extended_training=EXTENDED_TRAINING,
-        policy_kwargs=PPO_ADVANCED_KWARGS if ALGORITHM == 'PPO' else None
+        policy_kwargs=A2C_POLICY_KWARGS
     )
 
-    print(f"\n🎉 Robust training completed!")
+    print(f"\n🎉 A2C training completed!")
     print("📊 Results summary:")
     print("   • Check detailed action analysis above")
     print("   • Models saved in experiments/results/models/")
     print("   • TensorBoard logs in experiments/results/logs/")
     print("\n💡 Next steps:")
-    print("   • Test your model: python experiments/watch_agents.py")
+    print("   • Test your A2C model: (Future script: watch_a2c.py)")
     print("   • Validate robustness: python scratch/test_model_loading.py")
     print("   • Monitor actions: python experiments/action_monitor.py")
     
     if STOPPING_MODE != "extended":
         print(f"\n🛡️ Training used '{STOPPING_MODE}' stopping criteria")
-        print("   Your model should be robust for route completion!")
+        print("   Your A2C model should be robust for route completion!")
     else:
         print(f"\n⏱️ Training used full {TOTAL_TIMESTEPS:,} timesteps without early stopping")
 
 
 if __name__ == "__main__":
     main()
-

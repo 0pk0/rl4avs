@@ -216,7 +216,7 @@ def main():
         print("The training was using STANDARD environment (weak rewards)")
         print("instead of CUSTOM environment (strong rewards)")
         print("\n🔧 SOLUTION:")
-        print("Use the FIXED train_agents.py code that properly maintains")
+        print("Use the FIXED train_ppo.py code that properly maintains")
         print("custom environment even when show_training=True")
         
     except Exception as e:

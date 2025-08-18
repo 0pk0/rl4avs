@@ -159,7 +159,7 @@ evaluate_model_performance(model_path, model_name, n_episodes=10)
 
 | Issue | Solution |
 |-------|----------|
-| "No models found" | Train some models first with `experiments/train_agents.py` |
+| "No models found" | Train some models first with `experiments/train_ppo.py` |
 | Import errors | Run `debug_environment.py` to check dependencies |
 | Slow performance | Use `performance_profiler.py` to identify bottlenecks |
 | Rendering issues | Check display settings, run debug script |

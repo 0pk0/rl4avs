@@ -79,7 +79,19 @@ rl4avs/
 **Train PPO agent with debugging (recommended for development):**
 ```bash
 cd experiments
-python train_agents.py
+python train_ppo.py
+```
+
+**Train DQN agent with debugging:**
+```bash
+cd experiments
+python train_dqn.py
+```
+
+**Train A2C agent with debugging:**
+```bash
+cd experiments
+python train_a2c.py
 ```
 
 **Train multiple algorithms:**
@@ -137,20 +149,20 @@ The `train_q_learning.py` script introduces a Q-Learning training framework for 
    - Stable and sample efficient
    - Enhanced with advanced hyperparameters and safety-based stopping criteria
 
-2. **DQN (Deep Q-Network)**  
-   - Value-based method with experience replay
-   - Effective for discrete action spaces
-   - Proven performance in Atari games
+2. **DQN (Deep Q-Network)**
+   - Value-based method for discrete action spaces
+   - Utilizes experience replay and target networks for stability
+   - Integrated with safety-based stopping criteria for robust training
 
 3. **A2C (Advantage Actor-Critic)**
-   - Policy gradient with value function baseline
-   - On-policy learning with advantage estimation
-   - Good baseline algorithm
+   - Policy gradient method with value function baseline
+   - On-policy learning that combines advantages of policy gradients and value-based methods
+   - Integrated with safety-based stopping criteria for robust training
 
 4. **Q-Learning**
    - Value-based method with Q-table updates
-   - Suitable for discrete action spaces
-   - Comparable framework to PPO for direct analysis
+   - Suitable for discrete action spaces, using state discretization for continuous observations
+   - Serves as a comparable baseline to deep RL methods within the safety-focused framework
 
 ### Planned Extensions
 
