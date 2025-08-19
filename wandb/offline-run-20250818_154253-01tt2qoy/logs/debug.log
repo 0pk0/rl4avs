@@ -1,0 +1,27 @@
+2025-08-18 15:42:53,036 INFO    MainThread:26892 [wandb_setup.py:_flush():80] Current SDK version is 0.21.0
+2025-08-18 15:42:53,036 INFO    MainThread:26892 [wandb_setup.py:_flush():80] Configure stats pid to 26892
+2025-08-18 15:42:53,036 INFO    MainThread:26892 [wandb_setup.py:_flush():80] Loading settings from /Users/praveenk/.config/wandb/settings
+2025-08-18 15:42:53,036 INFO    MainThread:26892 [wandb_setup.py:_flush():80] Loading settings from /Users/praveenk/Documents/rl4avs/wandb/settings
+2025-08-18 15:42:53,036 INFO    MainThread:26892 [wandb_setup.py:_flush():80] Loading settings from environment variables
+2025-08-18 15:42:53,036 INFO    MainThread:26892 [wandb_init.py:setup_run_log_directory():703] Logging user logs to /Users/praveenk/Documents/rl4avs/wandb/offline-run-20250818_154253-01tt2qoy/logs/debug.log
+2025-08-18 15:42:53,036 INFO    MainThread:26892 [wandb_init.py:setup_run_log_directory():704] Logging internal logs to /Users/praveenk/Documents/rl4avs/wandb/offline-run-20250818_154253-01tt2qoy/logs/debug-internal.log
+2025-08-18 15:42:53,036 INFO    MainThread:26892 [wandb_init.py:init():830] calling init triggers
+2025-08-18 15:42:53,036 INFO    MainThread:26892 [wandb_init.py:init():835] wandb.init called with sweep_config: {}
+config: {'n_episodes': 50, 'use_custom_env': True, 'evaluation_timestamp': '2025-08-18T15:42:52.977261', 'models_evaluated': 3, '_wandb': {}}
+2025-08-18 15:42:53,036 INFO    MainThread:26892 [wandb_init.py:init():871] starting backend
+2025-08-18 15:42:53,256 INFO    MainThread:26892 [wandb_init.py:init():874] sending inform_init request
+2025-08-18 15:42:53,287 INFO    MainThread:26892 [wandb_init.py:init():882] backend started and connected
+2025-08-18 15:42:53,289 INFO    MainThread:26892 [wandb_init.py:init():953] updated telemetry
+2025-08-18 15:42:53,316 INFO    MainThread:26892 [wandb_init.py:init():977] communicating run to backend with 90.0 second timeout
+2025-08-18 15:42:53,436 INFO    MainThread:26892 [wandb_init.py:init():1029] starting run threads in backend
+2025-08-18 15:42:53,583 INFO    MainThread:26892 [wandb_run.py:_console_start():2458] atexit reg
+2025-08-18 15:42:53,583 INFO    MainThread:26892 [wandb_run.py:_redirect():2306] redirect: wrap_raw
+2025-08-18 15:42:53,583 INFO    MainThread:26892 [wandb_run.py:_redirect():2375] Wrapping output streams.
+2025-08-18 15:42:53,583 INFO    MainThread:26892 [wandb_run.py:_redirect():2398] Redirects installed.
+2025-08-18 15:42:53,585 INFO    MainThread:26892 [wandb_init.py:init():1075] run started, returning control to user process
+2025-08-18 15:44:14,321 INFO    MainThread:26892 [wandb_run.py:_finish():2224] finishing run rl4avs_model_comparison/01tt2qoy
+2025-08-18 15:44:14,323 INFO    MainThread:26892 [wandb_run.py:_atexit_cleanup():2423] got exitcode: 0
+2025-08-18 15:44:14,323 INFO    MainThread:26892 [wandb_run.py:_restore():2405] restore
+2025-08-18 15:44:14,323 INFO    MainThread:26892 [wandb_run.py:_restore():2411] restore done
+2025-08-18 15:44:14,337 INFO    MainThread:26892 [wandb_run.py:_footer_history_summary_info():3903] rendering history
+2025-08-18 15:44:14,338 INFO    MainThread:26892 [wandb_run.py:_footer_history_summary_info():3935] rendering summary
