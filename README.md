@@ -249,13 +249,7 @@ The `CustomRoundaboutEnv` class provides hooks for:
 - [Highway-Env Documentation](https://highway-env.readthedocs.io/)
 - [Gymnasium Documentation](https://gymnasium.farama.org/)
 
-## 🤝 Contributing
 
-This is an MSc dissertation project. For questions or suggestions:
-1. Check existing issues and documentation
-2. Test changes thoroughly
-3. Follow existing code structure and style
-4. Include proper documentation
 
 ## 📄 License
 
@@ -271,7 +265,7 @@ Academic use for MSc dissertation project.
 
 ---
 
-**Last Updated**: August 2025
+**Last Updated**: 19 August 2025
 **Author**: Praveen Kathirvel - MSc Robotics
 **Institution**: [University of Birmingham]
 
