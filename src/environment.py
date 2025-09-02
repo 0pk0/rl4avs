@@ -2,6 +2,7 @@ import gymnasium as gym
 import highway_env
 from highway_env.envs.roundabout_env import RoundaboutEnv
 from gymnasium.envs.registration import register
+import numpy as np
 
 
 class CustomRoundaboutEnv(RoundaboutEnv):
@@ -18,6 +19,7 @@ class CustomRoundaboutEnv(RoundaboutEnv):
         self.mistake_memory = []  # Track recent collision/failure patterns
         self.max_stationary_steps = 10  # Max allowed stationary steps before heavy penalty
         self.step_count = 0  # Track steps for efficiency bonus
+        self.prev_speed = None # Added to track previous speed for comfort calculation
         
         # Course completion tracking
         self.initial_position = None
@@ -62,6 +64,7 @@ class CustomRoundaboutEnv(RoundaboutEnv):
             "reward_speed_range": [7.0, 9.0],
             "normalize_reward": False,
             "vehicles_count": 12,
+            "vehicle_width": 2.0, # Added for near-miss calculation
         })
         return config
 
@@ -71,10 +74,21 @@ class CustomRoundaboutEnv(RoundaboutEnv):
         obs, reward, done, truncated, info = super().step(action)
         self.step_count += 1  # Track steps for efficiency bonus
 
-        if hasattr(self, 'vehicle') and self.vehicle is not None:
-            current_position = (self.vehicle.position[0], self.vehicle.position[1])
-            current_speed = self.vehicle.speed
-            
+        # Retrieve ego vehicle from environment
+        ego_vehicle = self.vehicle
+        
+        if ego_vehicle is not None:
+            current_position = (ego_vehicle.position[0], ego_vehicle.position[1])
+            current_speed = ego_vehicle.speed
+            # current_acceleration = np.linalg.norm(ego_vehicle.action.get("acceleration", [0, 0])) # Get acceleration
+
+            # Calculate acceleration for comfort score
+            current_acceleration = 0.0
+            if self.prev_speed is not None:
+                current_acceleration = abs(current_speed - self.prev_speed) / (1 / self.config["policy_frequency"])
+            self.prev_speed = current_speed
+
+
             # Initialize starting position on first step
             if self.initial_position is None:
                 self.initial_position = current_position
@@ -91,8 +105,7 @@ class CustomRoundaboutEnv(RoundaboutEnv):
             # Estimate roundabout center distance (assuming roundabout is around initial position)
             # This helps detect when vehicle is moving away from roundabout
             roundabout_center = self.initial_position  # Approximate center
-            center_distance = abs(current_position[0] - roundabout_center[0]) + \
-                            abs(current_position[1] - roundabout_center[1])
+            center_distance = np.linalg.norm(np.array(current_position) - np.array(roundabout_center))
             self.roundabout_center_distance = center_distance
             
             # 🔄 ROUNDABOUT ENTRY DETECTION
@@ -147,6 +160,33 @@ class CustomRoundaboutEnv(RoundaboutEnv):
                 print(f"💫 EPISODE TERMINATED: Course completion detected")
                 print(f"   Termination reason: Successful roundabout navigation")
             
+            # --- NEW METRICS CALCULATION ---
+            # 1. Near-miss detection
+            info['near_miss'] = False
+            near_miss_threshold_distance = self.config.get("vehicle_width", 2.0) + 0.5 # Vehicle width + buffer
+            for other in self.road.vehicles:
+                if other is not ego_vehicle:
+                    distance = np.linalg.norm(ego_vehicle.position - other.position)
+                    # Check for near-miss: close but not colliding
+                    if distance > self.config.get("vehicle_width", 2.0) / 2 and distance < near_miss_threshold_distance and not info.get('crashed', False):
+                        info['near_miss'] = True
+                        break
+            
+            # 2. Safety margin analysis (closest vehicle distance)
+            min_distance_to_other = np.inf
+            for other in self.road.vehicles:
+                if other is not ego_vehicle:
+                    distance = np.linalg.norm(ego_vehicle.position - other.position)
+                    if distance < min_distance_to_other:
+                        min_distance_to_other = distance
+            info['safety_margin'] = min_distance_to_other # Store min distance for safety margin analysis
+            
+            # 3. Comfort score (penalize high acceleration/deceleration)
+            # A simple comfort metric: inverse of acceleration magnitude
+            # Higher acceleration -> lower comfort. Add a small constant to avoid division by zero.
+            comfort = 1.0 / (current_acceleration + 0.5) if current_acceleration > 0.0 else 2.0 # Max comfort if no acceleration
+            info['comfort_score'] = comfort
+
             # 🚨 AGGRESSIVE IDLE/STATIONARY PENALTIES
             if current_speed < 0.5:  # Very low speed threshold
                 # Progressive idle penalty - gets worse over time
@@ -169,8 +209,7 @@ class CustomRoundaboutEnv(RoundaboutEnv):
                 
             # 🎯 PROGRESS REWARDS - Encourage forward movement
             if self.prev_position is not None:
-                distance_moved = abs(current_position[0] - self.prev_position[0]) + \
-                               abs(current_position[1] - self.prev_position[1])
+                distance_moved = np.linalg.norm(np.array(current_position) - np.array(self.prev_position))
                 self.total_distance_traveled += distance_moved
                 
                 if distance_moved > 0.1:  # Reward any meaningful movement
@@ -215,8 +254,7 @@ class CustomRoundaboutEnv(RoundaboutEnv):
                 # Additional penalty for repeated mistakes at similar locations
                 if len(self.mistake_memory) > 1:
                     for prev_mistake in self.mistake_memory[-3:]:  # Check last 3 mistakes
-                        pos_diff = abs(current_position[0] - prev_mistake['position'][0]) + \
-                                  abs(current_position[1] - prev_mistake['position'][1])
+                        pos_diff = np.linalg.norm(np.array(current_position) - np.array(prev_mistake['position']))
                         if pos_diff < 2.0:  # Similar location
                             repeated_penalty = self.config.get("repeated_mistake_penalty", -5.0)
                             reward += repeated_penalty
@@ -232,7 +270,7 @@ class CustomRoundaboutEnv(RoundaboutEnv):
                 print(f"   🚗 Speed at impact: {current_speed:.1f} km/h")
                 print(f"   🔄 Had entered roundabout: {self.has_entered_roundabout}")
                 print(f"   🚪 Had exited roundabout: {self.has_exited_roundabout}")
-                print(f"   📏 Distance from start: {abs(current_position[0] - self.initial_position[0]) + abs(current_position[1] - self.initial_position[1]):.1f}")
+                print(f"   📏 Distance from start: {np.linalg.norm(np.array(current_position) - np.array(self.initial_position)):.1f}")
                 print(f"   🎯 Penalty applied: {collision_penalty:.1f}")
                 print(f"   📊 Episode reward: {reward:.2f}")
                 print(f"💥 =============================================")
@@ -281,6 +319,7 @@ class CustomRoundaboutEnv(RoundaboutEnv):
             self.roundabout_progress = 0
             self.max_distance_from_start = 0
             self.roundabout_center_distance = 0
+            self.prev_speed = None # Reset previous speed
         return obs, info
 
 def register_custom_env():
